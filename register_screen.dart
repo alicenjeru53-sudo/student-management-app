@@ -1,29 +1,39 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import 'firebase_service.dart';
+import 'user_model.dart';
 import 'home_screen.dart';
-import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
+  final name = TextEditingController();
   final email = TextEditingController();
   final password = TextEditingController();
-  AuthService service = AuthService();
-  bool loading = false;
 
-  Future<void> login() async {
+  AuthService auth = AuthService();
+  FirebaseService firebase = FirebaseService();
+
+  Future<void> register() async {
     try {
-      setState(() => loading = true);
-
-      await service.login(
+      var result = await auth.register(
         email.text.trim(),
         password.text.trim(),
       );
+
+      UserModel user = UserModel(
+        id: result.user!.uid,
+        name: name.text.trim(),
+        email: email.text.trim(),
+        role: "patient",
+      );
+
+      await firebase.saveUser(user);
 
       if (!mounted) return;
 
@@ -35,10 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => loading = false);
+      String errorMessage = e.toString();
+      if (errorMessage.contains("email-already-in-use")) {
+        errorMessage = "This email is already registered. Please login instead.";
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Login Failed $e"),
+          content: Text(errorMessage),
         ),
       );
     }
@@ -48,12 +61,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Login"),
+        title: const Text("Register"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(
+                labelText: "Full Name",
+              ),
+            ),
             TextField(
               controller: email,
               decoration: const InputDecoration(
@@ -69,19 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: loading ? null : login,
-              child: const Text("LOGIN"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterScreen(),
-                  ),
-                );
-              },
-              child: const Text("Create Account"),
+              onPressed: register,
+              child: const Text("REGISTER"),
             ),
           ],
         ),
